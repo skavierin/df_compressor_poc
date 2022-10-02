@@ -1,9 +1,17 @@
-import pandas as pd
-import numpy as np
-import pickle
 import gzip
+import pickle
+import random
+import string
 import sys
+import os
+import time
 
+import numpy as np
+import pandas as pd
+
+
+TEMP_DIR = '/tmp/Custom'
+os.makedirs(TEMP_DIR, exist_ok=True)
 
 def get_dataset(size):
     df = pd.DataFrame()
@@ -25,7 +33,27 @@ def decompress_df(c_df):
     return df
 
 
-raw_df = get_dataset(2000000)
+def dump_df(df):
+    dump_name = ''.join([random.choice(string.ascii_letters) for _ in range(12)]) + '.df'
+    with open(os.path.join(TEMP_DIR, dump_name), mode = 'wb') as f:
+        pickle.dump(df, f)
+    return dump_name
+
+def load_df(dump_name):
+    df = None
+    with open(os.path.join(TEMP_DIR, dump_name), mode = 'rb') as f:
+        df = pickle.load(f)
+    os.remove(os.path.join(TEMP_DIR, dump_name))
+    return df
+
+
+
+raw_df = get_dataset(5000000)
+df = raw_df.copy()
+
+print('Running in memory compression')
+
+time_1 = time.time()
 
 raw_size = sys.getsizeof(raw_df)
 print(raw_size)
@@ -40,3 +68,26 @@ print(raw_size_2)
 
 print(pickle.dumps(raw_df) == pickle.dumps(raw_df_2))
 print(f'{round((float(compressed_size)/raw_size)*100, 2)}%')
+
+time_2 = time.time()
+print(f'Task took {time_2-time_1} seconds')
+
+
+print('Running dump')
+
+raw_size = sys.getsizeof(df)
+print(raw_size)
+
+compressed_df = dump_df(df)
+compressed_size = sys.getsizeof(compressed_df)
+print(compressed_size)
+
+raw_df_2 = load_df(compressed_df)
+raw_size_2 = sys.getsizeof(raw_df_2)
+print(raw_size_2)
+
+print(pickle.dumps(df) == pickle.dumps(raw_df_2))
+print(f'{round((float(compressed_size)/raw_size)*100, 2)}%')
+
+time_3 = time.time()
+print(f'Task took {time_3-time_2} seconds')
